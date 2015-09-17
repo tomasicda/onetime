@@ -1,0 +1,28 @@
+body {
+
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+canvas{
+	display: inline;
+	background-image: url("../finalFloorPlan.png");
+	background-repeat: no-repeat;
+}
+#roomView{
+width: 250px; 
+max-height: 900px; 
+position: absolute; 
+left: 920px; 
+top: 20px;
+}
+.myButton{
+	background-color: yellow; 
+	padding: 10px; 
+	width: 250px; 
+	list-style-type: none;
+	border-bottom-right-radius: 12px;
+	
+}

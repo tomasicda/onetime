@@ -1,0 +1,155 @@
+#!/usr/bin/env node //allows file to be executed directly instead of being passed as an argument to node
+
+/**
+ * Module dependencies.
+ */
+var app = require('../app');
+var debug = require('debug')('onetime:server');
+var http = require('http');
+
+var DAO = require("../houseDAO");
+
+var motionTracker = require("../motionTracker");
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort('3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+var io = require('socket.io')(server);
+
+
+var allDevices = require('../devices');
+
+//uncomment to run motion tracker
+motionTracker();
+
+
+Object.keys(allDevices).forEach(function(device){
+    DAO.getState(device, function(state){
+        allDevices[device].state = state;
+        console.log("StatesDevice: " + device + " : "+ allDevices[device]);
+    });
+});
+io.on("connection", function(socket){
+
+    console.log("servers here");
+//socket.on("roomBuild", function(roomDevices){
+
+    var builder = {myDevices: allDevices};
+
+    console.log("Now Building: ", allDevices["light01"].name);
+    socket.emit("nowBuilding", builder);
+
+
+    socket.on("buttonPressed", function(buttonPressed){
+        console.log("hereherehere: " + buttonPressed.myName);
+      //asynchronous: callback is called with the updated value
+        DAO.asyncToggleState(buttonPressed.myName, function(newState){
+
+            allDevices[buttonPressed.myName].state = newState;
+
+
+            console.log("new State Value: " + newState);
+            var stateChanged = {"nameValue": buttonPressed.myName, "stateValue": newState};
+            socket.emit("stateChanged", stateChanged);
+            socket.emit("nowBuilding", builder);
+
+    });
+
+
+  });
+
+    socket.on('switchedOffRoom', function () {
+        socket.emit('nowBuilding', builder);
+    });
+
+    //this was broken before trying to reffference the item list by the parameter inttead of the property
+    //socket.on("roomSelected", function(devices) {
+    //    console.log("NOW BUILDINGG: " + devices.roomId);
+    //    devices.deviceArray.forEach(function(device){
+    //        DAO.getState(device, function(deviceState){
+    //            console.log("My States Device:::" + deviceState);
+    //            var stateChanged = { "roomId": devices.roomId, "deviceId": device ,"stateValue": deviceState};
+    //            socket.emit("stateSet", stateChanged);
+    //            console.log(device+ ": DEVICESTATE:" + deviceState);
+    //            allDevices[device] = deviceState;
+    //        });
+    //    });
+    //});
+
+});
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
